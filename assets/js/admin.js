@@ -34,6 +34,19 @@
 
             // Logo upload
             $('.mm-upload-logo-btn').on('click', this.handleLogoUpload.bind(this));
+
+            // Run migrations
+            $('#mm-run-migrations').on('click', this.handleRunMigrations.bind(this));
+
+            // Service management
+            $('#mm-add-service-btn').on('click', this.openServiceModal.bind(this));
+            $(document).on('click', '.mm-edit-service', this.editService.bind(this));
+            $(document).on('click', '.mm-delete-service', this.deleteService.bind(this));
+            $(document).on('click', '.mm-modal-close', this.closeModal.bind(this));
+            $('#mm-service-form').on('submit', this.saveService.bind(this));
+
+            // Quick status change
+            $(document).on('click', '.mm-btn-quick-status', this.handleQuickStatus.bind(this));
         },
         
         /**
@@ -160,7 +173,7 @@
             
             const stato = $('#filter-stato').val();
             const search = $('#filter-search').val();
-            const dataD a = $('#filter-data-da').val();
+            const dataDa = $('#filter-data-da').val();
             const dataA = $('#filter-data-a').val();
             
             // Build URL with parameters
@@ -273,9 +286,279 @@
 
             // Apri il media frame
             this.mediaFrame.open();
+        },
+
+        /**
+         * Handle run migrations
+         */
+        handleRunMigrations: function(e) {
+            e.preventDefault();
+
+            const $button = $('#mm-run-migrations');
+            const $result = $('#mm-migration-result');
+
+            if (!confirm('Sei sicuro di voler eseguire le migrazioni del database? Questa operazione aggiungerà eventuali colonne mancanti alle tabelle.')) {
+                return;
+            }
+
+            // Show loading
+            $button.prop('disabled', true).html('⏳ Esecuzione in corso...');
+            $result.html('');
+
+            $.ajax({
+                url: mmPreventiviAdmin.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'mm_run_migrations',
+                    nonce: mmPreventiviAdmin.nonce
+                },
+                success: (response) => {
+                    if (response.success) {
+                        $result.html(`<div class="mm-notice mm-notice-success">${response.data.message}</div>`);
+                    } else {
+                        $result.html(`<div class="mm-notice mm-notice-error">${response.data.message}</div>`);
+                    }
+                    $button.prop('disabled', false).html('🔧 Esegui Migrazioni Database');
+                },
+                error: () => {
+                    $result.html('<div class="mm-notice mm-notice-error">Errore di connessione</div>');
+                    $button.prop('disabled', false).html('🔧 Esegui Migrazioni Database');
+                }
+            });
+        },
+
+        /**
+         * Open service modal for adding new service
+         */
+        openServiceModal: function(e) {
+            e.preventDefault();
+
+            // Reset form - controlla prima che esista
+            const $form = $('#mm-service-form');
+            if ($form.length && $form[0]) {
+                $form[0].reset();
+            }
+
+            $('#service-id').val('');
+            $('#mm-service-modal-title').text('Aggiungi Servizio');
+            $('#service-attivo').prop('checked', true);
+
+            // Show modal
+            $('#mm-service-modal').fadeIn(200);
+        },
+
+        /**
+         * Edit service
+         */
+        editService: function(e) {
+            e.preventDefault();
+
+            const $button = $(e.currentTarget);
+            const serviceId = $button.data('id');
+
+            // Show loading
+            $button.prop('disabled', true);
+
+            $.ajax({
+                url: mmPreventiviAdmin.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'mm_get_service',
+                    nonce: mmPreventiviAdmin.nonce,
+                    id: serviceId
+                },
+                success: (response) => {
+                    if (response.success) {
+                        const servizio = response.data.servizio;
+
+                        // Populate form
+                        $('#service-id').val(servizio.id);
+                        $('#service-nome').val(servizio.nome_servizio);
+                        $('#service-descrizione').val(servizio.descrizione);
+                        $('#service-categoria').val(servizio.categoria);
+                        $('#service-prezzo').val(servizio.prezzo_default);
+                        $('#service-ordinamento').val(servizio.ordinamento);
+                        $('#service-attivo').prop('checked', servizio.attivo == 1);
+
+                        // Update title and show modal
+                        $('#mm-service-modal-title').text('Modifica Servizio');
+                        $('#mm-service-modal').fadeIn(200);
+                    } else {
+                        this.showNotice(response.data.message, 'error');
+                    }
+                    $button.prop('disabled', false);
+                },
+                error: () => {
+                    this.showNotice('Errore di connessione', 'error');
+                    $button.prop('disabled', false);
+                }
+            });
+        },
+
+        /**
+         * Delete service
+         */
+        deleteService: function(e) {
+            e.preventDefault();
+
+            const $button = $(e.currentTarget);
+            const serviceId = $button.data('id');
+
+            if (!confirm('Sei sicuro di voler eliminare questo servizio?')) {
+                return;
+            }
+
+            $button.prop('disabled', true).html('⏳');
+
+            $.ajax({
+                url: mmPreventiviAdmin.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'mm_delete_service',
+                    nonce: mmPreventiviAdmin.nonce,
+                    id: serviceId
+                },
+                success: (response) => {
+                    if (response.success) {
+                        this.showNotice(response.data.message, 'success');
+
+                        // Remove row
+                        $button.closest('tr').fadeOut(300, function() {
+                            $(this).remove();
+
+                            // Check if table is empty
+                            if ($('#mm-services-list .mm-table tbody tr').length === 0) {
+                                location.reload();
+                            }
+                        });
+                    } else {
+                        this.showNotice(response.data.message, 'error');
+                        $button.prop('disabled', false).html('🗑️');
+                    }
+                },
+                error: () => {
+                    this.showNotice('Errore di connessione', 'error');
+                    $button.prop('disabled', false).html('🗑️');
+                }
+            });
+        },
+
+        /**
+         * Save service
+         */
+        saveService: function(e) {
+            e.preventDefault();
+
+            const $form = $('#mm-service-form');
+            const $submitBtn = $form.find('button[type="submit"]');
+            const originalText = $submitBtn.html();
+
+            $submitBtn.prop('disabled', true).html('💾 Salvataggio...');
+
+            // Prepare form data
+            const formData = {
+                action: 'mm_save_service',
+                nonce: mmPreventiviAdmin.nonce,
+                service_id: $('#service-id').val(),
+                nome_servizio: $('#service-nome').val(),
+                descrizione: $('#service-descrizione').val(),
+                categoria: $('#service-categoria').val(),
+                prezzo_default: $('#service-prezzo').val(),
+                ordinamento: $('#service-ordinamento').val()
+            };
+
+            if ($('#service-attivo').is(':checked')) {
+                formData.attivo = 1;
+            }
+
+            $.ajax({
+                url: mmPreventiviAdmin.ajaxurl,
+                type: 'POST',
+                data: formData,
+                success: (response) => {
+                    if (response.success) {
+                        this.showNotice(response.data.message, 'success');
+                        this.closeModal();
+
+                        // Reload page to show updated list
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        this.showNotice(response.data.message, 'error');
+                        $submitBtn.prop('disabled', false).html(originalText);
+                    }
+                },
+                error: () => {
+                    this.showNotice('Errore di connessione', 'error');
+                    $submitBtn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+
+        /**
+         * Close modal
+         */
+        closeModal: function() {
+            $('.mm-modal').fadeOut(200);
+        },
+
+        /**
+         * Handle quick status change (Accettato/Rifiutato)
+         */
+        handleQuickStatus: function(e) {
+            e.preventDefault();
+
+            const $button = $(e.currentTarget);
+            const preventivoId = $button.data('id');
+            const newStatus = $button.data('status');
+            const statusLabel = newStatus === 'accettato' ? 'Accettato' : 'Rifiutato';
+
+            if (!confirm(`Sei sicuro di voler segnare questo preventivo come ${statusLabel}?`)) {
+                return;
+            }
+
+            const originalHtml = $button.html();
+            $button.prop('disabled', true).html('⏳');
+
+            $.ajax({
+                url: mmPreventiviAdmin.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'mm_update_stato',
+                    nonce: mmPreventiviAdmin.nonce,
+                    id: preventivoId,
+                    stato: newStatus
+                },
+                success: (response) => {
+                    if (response.success) {
+                        this.showNotice(response.data.message, 'success');
+
+                        // Update status badge in the same row
+                        const $row = $button.closest('tr');
+                        const $statusBadge = $row.find('.mm-status-badge');
+                        $statusBadge
+                            .removeClass('bozza attivo accettato rifiutato completato')
+                            .addClass(newStatus)
+                            .text(statusLabel);
+
+                        // Remove quick action buttons after status change
+                        $button.siblings('.mm-btn-quick-status').addBack().fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    } else {
+                        this.showNotice(response.data.message, 'error');
+                        $button.prop('disabled', false).html(originalHtml);
+                    }
+                },
+                error: () => {
+                    this.showNotice('Errore di connessione', 'error');
+                    $button.prop('disabled', false).html(originalHtml);
+                }
+            });
         }
     };
-    
+
     // Initialize when document is ready
     $(document).ready(function() {
         if ($('.mm-admin-page').length) {

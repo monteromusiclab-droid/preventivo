@@ -17,6 +17,12 @@ class MM_Admin {
         add_action('wp_ajax_mm_delete_preventivo', array($this, 'ajax_delete_preventivo'));
         add_action('wp_ajax_mm_update_stato', array($this, 'ajax_update_stato'));
         add_action('wp_ajax_mm_export_pdf', array($this, 'ajax_export_pdf'));
+        add_action('wp_ajax_mm_run_migrations', array($this, 'ajax_run_migrations'));
+
+        // AJAX handlers per catalogo servizi
+        add_action('wp_ajax_mm_save_service', array($this, 'ajax_save_service'));
+        add_action('wp_ajax_mm_get_service', array($this, 'ajax_get_service'));
+        add_action('wp_ajax_mm_delete_service', array($this, 'ajax_delete_service'));
     }
     
     /**
@@ -90,9 +96,18 @@ class MM_Admin {
         MM_Security::check_admin_permission();
         
         // Gestisci azioni
-        if (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['id'])) {
-            $this->render_view_preventivo(intval($_GET['id']));
-            return;
+        if (isset($_GET['action']) && isset($_GET['id'])) {
+            $id = intval($_GET['id']);
+
+            if ($_GET['action'] === 'view') {
+                $this->render_view_preventivo($id);
+                return;
+            }
+
+            if ($_GET['action'] === 'edit') {
+                $this->render_edit_preventivo($id);
+                return;
+            }
         }
         
         // Ottieni preventivi
@@ -125,7 +140,61 @@ class MM_Admin {
         
         include MM_PREVENTIVI_PLUGIN_DIR . 'admin/views/view-preventivo.php';
     }
-    
+
+    /**
+     * Render modifica preventivo
+     */
+    private function render_edit_preventivo($id) {
+        MM_Security::check_admin_permission();
+
+        $preventivo = MM_Database::get_preventivo($id);
+
+        if (!$preventivo) {
+            wp_die(__('Preventivo non trovato.', 'mm-preventivi'));
+        }
+
+        // Gestisci salvataggio
+        if (isset($_POST['mm_update_preventivo'])) {
+            check_admin_referer('mm_update_preventivo_' . $id);
+
+            $data = array(
+                'data_preventivo' => sanitize_text_field($_POST['data_preventivo']),
+                'sposi' => sanitize_text_field($_POST['sposi']),
+                'email' => sanitize_email($_POST['email']),
+                'telefono' => sanitize_text_field($_POST['telefono']),
+                'data_evento' => sanitize_text_field($_POST['data_evento']),
+                'location' => sanitize_text_field($_POST['location']),
+                'tipo_evento' => sanitize_text_field($_POST['tipo_evento']),
+                'cerimonia' => isset($_POST['cerimonia']) ? $_POST['cerimonia'] : array(),
+                'servizi_extra' => isset($_POST['servizi_extra']) ? $_POST['servizi_extra'] : array(),
+                'note' => sanitize_textarea_field($_POST['note']),
+                'totale_servizi' => floatval($_POST['totale_servizi']),
+                'sconto' => floatval($_POST['sconto']),
+                'sconto_percentuale' => floatval($_POST['sconto_percentuale']),
+                'applica_enpals' => isset($_POST['applica_enpals']) ? 1 : 0,
+                'applica_iva' => isset($_POST['applica_iva']) ? 1 : 0,
+                'enpals' => floatval($_POST['enpals']),
+                'iva' => floatval($_POST['iva']),
+                'totale' => floatval($_POST['totale']),
+                'data_acconto' => !empty($_POST['data_acconto']) ? sanitize_text_field($_POST['data_acconto']) : null,
+                'importo_acconto' => !empty($_POST['importo_acconto']) ? floatval($_POST['importo_acconto']) : null,
+                'servizi' => isset($_POST['servizi']) ? $_POST['servizi'] : array()
+            );
+
+            $result = MM_Database::update_preventivo($id, $data);
+
+            if (is_wp_error($result)) {
+                echo '<div class="mm-notice mm-notice-error">' . $result->get_error_message() . '</div>';
+            } else {
+                echo '<div class="mm-notice mm-notice-success">Preventivo aggiornato con successo!</div>';
+                // Ricarica i dati aggiornati
+                $preventivo = MM_Database::get_preventivo($id);
+            }
+        }
+
+        include MM_PREVENTIVI_PLUGIN_DIR . 'admin/views/edit-preventivo.php';
+    }
+
     /**
      * Render nuovo preventivo
      */
@@ -219,6 +288,100 @@ class MM_Admin {
         
         MM_PDF_Generator::generate_pdf($preventivo);
         exit;
+    }
+
+    /**
+     * AJAX: Esegui migrazioni database
+     */
+    public function ajax_run_migrations() {
+        MM_Security::check_admin_permission();
+
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mm_preventivi_admin_nonce')) {
+            wp_send_json_error(array('message' => __('Verifica di sicurezza fallita.', 'mm-preventivi')));
+        }
+
+        // Esegui migrazioni
+        MM_Database::create_tables();
+
+        wp_send_json_success(array('message' => __('Migrazioni database eseguite con successo!', 'mm-preventivi')));
+    }
+
+    /**
+     * AJAX: Salva servizio (nuovo o aggiorna)
+     */
+    public function ajax_save_service() {
+        MM_Security::check_admin_permission();
+
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mm_preventivi_admin_nonce')) {
+            wp_send_json_error(array('message' => __('Verifica di sicurezza fallita.', 'mm-preventivi')));
+        }
+
+        $service_id = isset($_POST['service_id']) ? intval($_POST['service_id']) : 0;
+
+        $data = array(
+            'nome_servizio' => sanitize_text_field($_POST['nome_servizio']),
+            'descrizione' => isset($_POST['descrizione']) ? sanitize_textarea_field($_POST['descrizione']) : '',
+            'prezzo_default' => isset($_POST['prezzo_default']) ? floatval($_POST['prezzo_default']) : 0,
+            'categoria' => isset($_POST['categoria']) ? sanitize_text_field($_POST['categoria']) : '',
+            'attivo' => isset($_POST['attivo']) ? 1 : 0,
+            'ordinamento' => isset($_POST['ordinamento']) ? intval($_POST['ordinamento']) : 0
+        );
+
+        if ($service_id > 0) {
+            // Aggiorna servizio esistente
+            $result = MM_Database::update_catalogo_servizio($service_id, $data);
+            $message = __('Servizio aggiornato con successo.', 'mm-preventivi');
+        } else {
+            // Crea nuovo servizio
+            $result = MM_Database::save_catalogo_servizio($data);
+            $message = __('Servizio creato con successo.', 'mm-preventivi');
+        }
+
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        } else {
+            wp_send_json_success(array('message' => $message));
+        }
+    }
+
+    /**
+     * AJAX: Ottieni servizio
+     */
+    public function ajax_get_service() {
+        MM_Security::check_admin_permission();
+
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mm_preventivi_admin_nonce')) {
+            wp_send_json_error(array('message' => __('Verifica di sicurezza fallita.', 'mm-preventivi')));
+        }
+
+        $id = intval($_POST['id']);
+        $servizio = MM_Database::get_catalogo_servizio($id);
+
+        if ($servizio) {
+            wp_send_json_success(array('servizio' => $servizio));
+        } else {
+            wp_send_json_error(array('message' => __('Servizio non trovato.', 'mm-preventivi')));
+        }
+    }
+
+    /**
+     * AJAX: Elimina servizio
+     */
+    public function ajax_delete_service() {
+        MM_Security::check_admin_permission();
+
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mm_preventivi_admin_nonce')) {
+            wp_send_json_error(array('message' => __('Verifica di sicurezza fallita.', 'mm-preventivi')));
+        }
+
+        $id = intval($_POST['id']);
+        $result = MM_Database::delete_catalogo_servizio($id);
+
+        if ($result) {
+            wp_send_json_success(array('message' => __('Servizio eliminato con successo.', 'mm-preventivi')));
+        } else {
+            wp_send_json_error(array('message' => __('Errore nell\'eliminazione del servizio.', 'mm-preventivi')));
+        }
     }
 }
 

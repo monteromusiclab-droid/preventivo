@@ -6,14 +6,51 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Verifica autenticazione
+if (!MM_Auth::is_logged_in()) {
+    echo MM_Auth::show_login_form();
+    return;
+}
+
+$current_user = wp_get_current_user();
+
+// Carica categorie attive
+$categorie = MM_Database::get_categorie(array('attivo' => 1));
 ?>
 
-<div class="mm-preventivi-container">
+<div class="mm-preventivi-container">>
+
+    <!-- Navigation Bar -->
+    <div class="mm-nav-bar">
+        <div class="mm-nav-left">
+            <span class="mm-user-info">
+                👤 <strong><?php echo esc_html($current_user->display_name); ?></strong>
+            </span>
+        </div>
+        <div class="mm-nav-center">
+            <a href="<?php echo home_url('/lista-preventivi/'); ?>" class="mm-nav-btn">
+                📊 Tutti i Preventivi
+            </a>
+            <a href="<?php echo home_url('/statistiche-preventivi/'); ?>" class="mm-nav-btn">
+                📈 Statistiche
+            </a>
+            <a href="<?php echo get_permalink(); ?>" class="mm-nav-btn mm-nav-btn-active">
+                ➕ Nuovo Preventivo
+            </a>
+        </div>
+        <div class="mm-nav-right">
+            <a href="<?php echo MM_Auth::get_logout_url(); ?>" class="mm-nav-btn mm-nav-btn-logout">
+                🚪 Esci
+            </a>
+        </div>
+    </div>
+
     <form id="mm-preventivo-form" class="mm-preventivi-form" method="post">
-        
+
         <!-- Header -->
         <div class="mm-form-header">
-            <h1>✨ Richiedi il Tuo Preventivo</h1>
+            <h1>✨ Nuovo Preventivo</h1>
             <p>DJ • Animazione • Scenografie • Photo Booth</p>
         </div>
         
@@ -29,15 +66,28 @@ if (!defined('ABSPATH')) {
                         <input type="date" id="data_preventivo" name="data_preventivo" required>
                     </div>
                     <div class="mm-form-group">
-                        <label>Sposi / Cliente <span class="required">*</span></label>
-                        <input type="text" id="sposi" name="sposi" placeholder="Nome e cognome" required>
+                        <label>Categoria Evento <span class="required">*</span></label>
+                        <select id="categoria_id" name="categoria_id" required>
+                            <option value="">-- Seleziona categoria --</option>
+                            <?php foreach ($categorie as $categoria) : ?>
+                                <option value="<?php echo $categoria['id']; ?>">
+                                    <?php echo esc_html($categoria['icona'] . ' ' . $categoria['nome']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
                 <div class="mm-form-row">
                     <div class="mm-form-group">
+                        <label>Sposi / Cliente <span class="required">*</span></label>
+                        <input type="text" id="sposi" name="sposi" placeholder="Nome e cognome" required>
+                    </div>
+                    <div class="mm-form-group">
                         <label>Email</label>
                         <input type="email" id="email" name="email" placeholder="email@esempio.it">
                     </div>
+                </div>
+                <div class="mm-form-row">
                     <div class="mm-form-group">
                         <label>Telefono</label>
                         <input type="tel" id="telefono" name="telefono" placeholder="333-7512343">
@@ -74,23 +124,52 @@ if (!defined('ABSPATH')) {
                     </div>
                     <div class="mm-form-group">
                         <label>Cerimonia</label>
-                        <div class="mm-checkbox-group">
-                            <div class="mm-checkbox-item">
-                                <input type="checkbox" id="rito" name="cerimonia[]" value="Rito">
-                                <label for="rito">Rito</label>
+
+                        <!-- Rito Si/No -->
+                        <div class="mm-rito-selector" style="margin-bottom: 15px;">
+                            <label style="font-weight: 600; margin-bottom: 8px; display: block;">Rito:</label>
+                            <div style="display: flex; gap: 20px;">
+                                <div class="mm-radio-item">
+                                    <input type="radio" id="rito_si" name="rito" value="Si">
+                                    <label for="rito_si">Si</label>
+                                </div>
+                                <div class="mm-radio-item">
+                                    <input type="radio" id="rito_no" name="rito" value="No" checked>
+                                    <label for="rito_no">No</label>
+                                </div>
                             </div>
+                        </div>
+
+                        <!-- Strumenti Rito -->
+                        <div class="mm-checkbox-group">
                             <div class="mm-checkbox-item">
                                 <input type="checkbox" id="violino" name="cerimonia[]" value="Violino">
                                 <label for="violino">Violino</label>
+                            </div>
+                            <div class="mm-checkbox-item">
+                                <input type="checkbox" id="arpa" name="cerimonia[]" value="Arpa">
+                                <label for="arpa">Arpa</label>
                             </div>
                             <div class="mm-checkbox-item">
                                 <input type="checkbox" id="piano" name="cerimonia[]" value="Piano">
                                 <label for="piano">Piano</label>
                             </div>
                             <div class="mm-checkbox-item">
-                                <input type="checkbox" id="arpa" name="cerimonia[]" value="Arpa">
-                                <label for="arpa">Arpa</label>
+                                <input type="checkbox" id="altro_cerimonia" name="cerimonia[]" value="Altro">
+                                <label for="altro_cerimonia">Altro</label>
                             </div>
+                        </div>
+
+                        <!-- Campo Altro Rito (mostrato solo se selezionato) -->
+                        <div id="altro_rito_container" style="margin-top: 10px; display: none;">
+                            <label for="altro_rito_testo" style="font-weight: 600; display: block; margin-bottom: 8px;">Specifica altro:</label>
+                            <input type="text" id="altro_rito_testo" name="altro_rito_testo" placeholder="Inserisci strumento o servizio" style="width: 100%; max-width: 400px; padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+
+                        <!-- Prezzo Rito -->
+                        <div style="margin-top: 15px;">
+                            <label for="prezzo_cerimonia" style="font-weight: 600; display: block; margin-bottom: 8px;">Prezzo Rito (€):</label>
+                            <input type="number" id="prezzo_cerimonia" name="prezzo_cerimonia" placeholder="0,00" min="0" step="0.01" value="0" style="width: 100%; max-width: 200px;">
                         </div>
                     </div>
                 </div>
@@ -100,52 +179,59 @@ if (!defined('ABSPATH')) {
             <div class="mm-form-section">
                 <h2 class="mm-section-title">🎉 Servizi Richiesti</h2>
                 <div class="mm-services-list">
-                    <?php
-                    $servizi = array(
-                        'dj' => array('label' => 'DJ + ANIMATORE', 'price' => 800),
-                        'strumento' => array('label' => 'STRUMENTO (SAX/VIOLINO)', 'price' => 300),
-                        'altrostr' => array('label' => 'ALTRO STRUMENTO', 'price' => 0),
-                        'cantante' => array('label' => 'CANTANTE', 'price' => 0),
-                        'band' => array('label' => 'BAND LIVE', 'price' => 0),
-                        '2imp' => array('label' => '2° IMPIANTO', 'price' => 0),
-                        'luci' => array('label' => 'IMPIANTO LUCI', 'price' => 0),
-                        'proiezioni' => array('label' => 'PROIEZIONI', 'price' => 0),
-                        'photobooth' => array('label' => 'PHOTOBOOTH', 'price' => 0),
-                        'fontane' => array('label' => 'FONTANE FREDDE', 'price' => 0),
-                        'fumo' => array('label' => 'FUMO BASSO', 'price' => 0),
-                        'macchina' => array('label' => 'MACCHINA BOLLE', 'price' => 0),
-                        'fuochi' => array('label' => 'FUOCHI D\'ARTIFICIO', 'price' => 0),
-                        'gadget' => array('label' => 'GADGET', 'price' => 0),
-                        'gun' => array('label' => 'GUN CO2', 'price' => 0),
-                        'djafter' => array('label' => 'DJ AFTER', 'price' => 0),
-                        'altro' => array('label' => 'ALTRO', 'price' => 0),
-                    );
-                    
-                    foreach ($servizi as $key => $servizio) :
-                        $checked = ($key === 'dj') ? 'checked' : '';
-                    ?>
-                    <div class="mm-service-item">
-                        <input type="checkbox" id="srv_<?php echo esc_attr($key); ?>" <?php echo $checked; ?>>
-                        <label for="srv_<?php echo esc_attr($key); ?>"><?php echo esc_html($servizio['label']); ?></label>
-                        <div class="mm-service-pricing">
-                            <input type="number" id="price_<?php echo esc_attr($key); ?>" placeholder="€" value="<?php echo esc_attr($servizio['price']); ?>" min="0" step="0.01" class="mm-price-input">
-                            <input type="number" id="discount_<?php echo esc_attr($key); ?>" placeholder="Sconto €" value="0" min="0" step="0.01" class="mm-discount-input" title="Sconto fisso per questo servizio">
+                    <!-- Header Colonne -->
+                    <div class="mm-services-header">
+                        <div class="header-checkbox"></div>
+                        <div class="header-label">Servizio</div>
+                        <div class="header-pricing">
+                            <span class="price-label">Prezzo (€)</span>
+                            <span class="discount-label">Sconto (€)</span>
                         </div>
                     </div>
-                    <?php endforeach; ?>
+
+                    <?php
+                    // Carica servizi dal catalogo backend
+                    $servizi = MM_Database::get_catalogo_servizi();
+
+                    if (empty($servizi)) {
+                        echo '<p style="color: #999; text-align: center; padding: 20px;">Nessun servizio disponibile nel catalogo. Vai su <a href="' . admin_url('admin.php?page=mm-preventivi-settings') . '">Impostazioni</a> per aggiungere servizi.</p>';
+                    } else {
+                        foreach ($servizi as $servizio) :
+                            // Genera un ID univoco dal nome del servizio
+                            $service_id = sanitize_title($servizio['nome_servizio']);
+                        ?>
+                        <div class="mm-service-item">
+                            <input type="checkbox" id="srv_<?php echo esc_attr($service_id); ?>">
+                            <label for="srv_<?php echo esc_attr($service_id); ?>">
+                                <?php echo esc_html($servizio['nome_servizio']); ?>
+                                <?php if (!empty($servizio['descrizione'])): ?>
+                                    <small style="display: block; color: #999; font-size: 11px; font-weight: 300; margin-top: 2px;"><?php echo esc_html($servizio['descrizione']); ?></small>
+                                <?php endif; ?>
+                            </label>
+                            <div class="mm-service-pricing">
+                                <input type="number" id="price_<?php echo esc_attr($service_id); ?>" placeholder="€" value="<?php echo esc_attr($servizio['prezzo_default']); ?>" min="0" step="0.01" class="mm-price-input">
+                                <input type="number" id="discount_<?php echo esc_attr($service_id); ?>" placeholder="Sconto €" value="0" min="0" step="0.01" class="mm-discount-input" title="Sconto fisso per questo servizio">
+                            </div>
+                        </div>
+                        <?php
+                        endforeach;
+                    }
+                    ?>
                 </div>
             </div>
             
             <!-- Servizi Extra -->
             <div class="mm-form-section">
-                <h2 class="mm-section-title">✨ Servizi Aggiuntivi</h2>
+                <h2 class="mm-section-title">✨ Servizi</h2>
                 <div class="mm-checkbox-group">
                     <?php
                     $extras = array('Accoglienza', 'Antipasti', 'Sala', 'Torta', 'Buffet f/d', 'After Party');
+                    $extras_checked = array('Accoglienza', 'Antipasti', 'Sala', 'Torta', 'Buffet f/d'); // Default checked
                     foreach ($extras as $extra) :
+                        $is_checked = in_array($extra, $extras_checked) ? 'checked' : '';
                     ?>
                     <div class="mm-checkbox-item">
-                        <input type="checkbox" id="extra_<?php echo sanitize_title($extra); ?>" name="servizi_extra[]" value="<?php echo esc_attr($extra); ?>">
+                        <input type="checkbox" id="extra_<?php echo sanitize_title($extra); ?>" name="servizi_extra[]" value="<?php echo esc_attr($extra); ?>" <?php echo $is_checked; ?>>
                         <label for="extra_<?php echo sanitize_title($extra); ?>"><?php echo esc_html($extra); ?></label>
                     </div>
                     <?php endforeach; ?>
@@ -180,11 +266,11 @@ if (!defined('ABSPATH')) {
                         <div class="mm-checkbox-group">
                             <div class="mm-checkbox-item">
                                 <input type="checkbox" id="applica_enpals" name="applica_enpals" value="1" checked>
-                                <label for="applica_enpals">Applica Enpals (33%)</label>
+                                <label for="applica_enpals">Applica Enpals (<?php echo esc_html(get_option('mm_preventivi_enpals_percentage', '33')); ?>%)</label>
                             </div>
                             <div class="mm-checkbox-item">
                                 <input type="checkbox" id="applica_iva" name="applica_iva" value="1" checked>
-                                <label for="applica_iva">Applica IVA (22%)</label>
+                                <label for="applica_iva">Applica IVA (<?php echo esc_html(get_option('mm_preventivi_iva_percentage', '22')); ?>%)</label>
                             </div>
                         </div>
                     </div>
@@ -206,11 +292,11 @@ if (!defined('ABSPATH')) {
                     <span class="value" id="subtotal-sconto">€ 0,00</span>
                 </div>
                 <div class="mm-price-row" id="enpals-row">
-                    <span class="label">Ex Enpals (33%):</span>
+                    <span class="label">Ex Enpals (<?php echo esc_html(get_option('mm_preventivi_enpals_percentage', '33')); %>%):</span>
                     <span class="value" id="enpals">€ 0,00</span>
                 </div>
                 <div class="mm-price-row" id="iva-row">
-                    <span class="label">IVA (22%):</span>
+                    <span class="label">IVA (<?php echo esc_html(get_option('mm_preventivi_iva_percentage', '22')); ?>%):</span>
                     <span class="value" id="iva">€ 0,00</span>
                 </div>
                 <div class="mm-price-row total">
@@ -236,6 +322,9 @@ if (!defined('ABSPATH')) {
             
             <!-- Buttons -->
             <div class="mm-form-actions">
+                <button type="button" class="mm-btn mm-btn-preview">
+                    👁️ Anteprima Preventivo
+                </button>
                 <button type="submit" class="mm-btn mm-btn-primary">
                     💾 Salva Preventivo
                 </button>
@@ -246,4 +335,29 @@ if (!defined('ABSPATH')) {
             
         </div>
     </form>
+
+    <!-- Preview Modal -->
+    <div id="mm-preview-modal" class="mm-modal" style="display: none;">
+        <div class="mm-modal-overlay"></div>
+        <div class="mm-modal-content">
+            <div class="mm-modal-header">
+                <h2>📄 Anteprima Preventivo</h2>
+                <button type="button" class="mm-modal-close">&times;</button>
+            </div>
+            <div class="mm-modal-body" id="mm-preview-content">
+                <!-- Content will be injected here -->
+            </div>
+            <div class="mm-modal-footer">
+                <button type="button" class="mm-btn mm-btn-secondary mm-modal-close-btn">
+                    Chiudi
+                </button>
+                <button type="button" class="mm-btn mm-btn-primary mm-preview-save-btn">
+                    💾 Salva Preventivo
+                </button>
+                <button type="button" class="mm-btn mm-btn-secondary" onclick="window.print()">
+                    🖨️ Stampa
+                </button>
+            </div>
+        </div>
+    </div>
 </div>

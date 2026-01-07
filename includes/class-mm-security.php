@@ -65,9 +65,17 @@ class MM_Security {
         }
         
         // Valida numeri
-        $numeric_fields = array('totale_servizi', 'enpals', 'iva', 'totale', 'importo_acconto');
+        $numeric_fields = array('totale_servizi', 'enpals', 'iva', 'totale');
         foreach ($numeric_fields as $field) {
             if (!empty($data[$field]) && !is_numeric($data[$field])) {
+                $errors[] = sprintf(__('Il campo %s deve essere un numero.', 'mm-preventivi'), $field);
+            }
+        }
+
+        // Valida numeri opzionali
+        $optional_numeric_fields = array('importo_acconto', 'sconto', 'sconto_percentuale');
+        foreach ($optional_numeric_fields as $field) {
+            if (isset($data[$field]) && !empty($data[$field]) && !is_numeric($data[$field])) {
                 $errors[] = sprintf(__('Il campo %s deve essere un numero.', 'mm-preventivi'), $field);
             }
         }
@@ -109,10 +117,18 @@ class MM_Security {
         $sanitized['note'] = isset($data['note']) ? sanitize_textarea_field($data['note']) : '';
         
         // Numeri
-        $numeric_fields = array('totale_servizi', 'enpals', 'iva', 'totale', 'importo_acconto');
+        $numeric_fields = array('totale_servizi', 'enpals', 'iva', 'totale', 'importo_acconto', 'sconto', 'sconto_percentuale');
         foreach ($numeric_fields as $field) {
             $sanitized[$field] = isset($data[$field]) ? floatval($data[$field]) : 0;
         }
+
+        // Boolean fields - gestisce correttamente true/false/1/0/"true"/"false"
+        $sanitized['applica_enpals'] = isset($data['applica_enpals']) ?
+            (($data['applica_enpals'] === true || $data['applica_enpals'] === 1 || $data['applica_enpals'] === '1' || $data['applica_enpals'] === 'true') ? true : false) :
+            true;
+        $sanitized['applica_iva'] = isset($data['applica_iva']) ?
+            (($data['applica_iva'] === true || $data['applica_iva'] === 1 || $data['applica_iva'] === '1' || $data['applica_iva'] === 'true') ? true : false) :
+            true;
         
         // Array
         if (isset($data['cerimonia']) && is_array($data['cerimonia'])) {
@@ -129,7 +145,8 @@ class MM_Security {
             foreach ($data['servizi'] as $servizio) {
                 $sanitized['servizi'][] = array(
                     'nome' => sanitize_text_field($servizio['nome']),
-                    'prezzo' => floatval($servizio['prezzo'])
+                    'prezzo' => floatval($servizio['prezzo']),
+                    'sconto' => isset($servizio['sconto']) ? floatval($servizio['sconto']) : 0
                 );
             }
         }

@@ -98,19 +98,45 @@ if (!defined('ABSPATH')) {
                         </td>
                         <td>
                             <div class="mm-actions">
-                                <a href="?page=mm-preventivi&action=view&id=<?php echo esc_attr($preventivo['id']); ?>" 
-                                   class="mm-btn-icon view" 
+                                <a href="?page=mm-preventivi&action=view&id=<?php echo esc_attr($preventivo['id']); ?>"
+                                   class="mm-btn-icon view"
                                    title="Visualizza">
                                     👁️
                                 </a>
-                                <button type="button" 
-                                        class="mm-btn-icon pdf mm-btn-pdf" 
+
+                                <a href="?page=mm-preventivi&action=edit&id=<?php echo esc_attr($preventivo['id']); ?>"
+                                   class="mm-btn-icon edit"
+                                   title="Modifica">
+                                    ✏️
+                                </a>
+
+                                <?php if ($preventivo['stato'] === 'attivo') : ?>
+                                    <button type="button"
+                                            class="mm-btn-icon mm-btn-quick-status"
+                                            data-id="<?php echo esc_attr($preventivo['id']); ?>"
+                                            data-status="accettato"
+                                            title="Segna come Accettato"
+                                            style="background: #4caf50; color: white;">
+                                        ✓
+                                    </button>
+                                    <button type="button"
+                                            class="mm-btn-icon mm-btn-quick-status"
+                                            data-id="<?php echo esc_attr($preventivo['id']); ?>"
+                                            data-status="rifiutato"
+                                            title="Segna come Rifiutato"
+                                            style="background: #f44336; color: white;">
+                                        ✗
+                                    </button>
+                                <?php endif; ?>
+
+                                <button type="button"
+                                        class="mm-btn-icon pdf mm-btn-pdf"
                                         data-id="<?php echo esc_attr($preventivo['id']); ?>"
                                         title="Esporta PDF">
                                     📄
                                 </button>
-                                <button type="button" 
-                                        class="mm-btn-icon delete mm-btn-delete" 
+                                <button type="button"
+                                        class="mm-btn-icon delete mm-btn-delete"
                                         data-id="<?php echo esc_attr($preventivo['id']); ?>"
                                         data-numero="<?php echo esc_attr($preventivo['numero_preventivo']); ?>"
                                         title="Elimina">

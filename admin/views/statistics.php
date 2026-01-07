@@ -34,7 +34,13 @@ if (!defined('ABSPATH')) {
             <div class="mm-stat-value"><?php echo esc_html($stats['preventivi_accettati']); ?></div>
             <div class="mm-stat-icon">✅</div>
         </div>
-        
+
+        <div class="mm-stat-card" style="border-left-color: #f44336;">
+            <div class="mm-stat-label">Preventivi Rifiutati</div>
+            <div class="mm-stat-value"><?php echo esc_html($stats['preventivi_rifiutati']); ?></div>
+            <div class="mm-stat-icon">❌</div>
+        </div>
+
         <div class="mm-stat-card warning">
             <div class="mm-stat-label">Totale Fatturato</div>
             <div class="mm-stat-value">€ <?php echo number_format($stats['totale_fatturato'], 0, ',', '.'); ?></div>

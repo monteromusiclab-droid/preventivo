@@ -26,19 +26,172 @@ if (!defined('ABSPATH')) {
 </div>
 
 <style>
-/* Adatta lo stile del form per l'admin */
+/* Adatta lo stile del form per l'admin - Migliorato */
 .mm-admin-page .mm-preventivi-form {
     background: white;
-    border: 1px solid #ccd0d4;
-    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .mm-admin-page .mm-form-header {
     background: linear-gradient(135deg, #e91e63 0%, #9c27b0 100%);
+    padding: 30px 40px;
+}
+
+.mm-admin-page .mm-form-header h1 {
+    font-size: 28px;
+    margin-bottom: 5px;
 }
 
 .mm-admin-page .mm-preventivi-container {
     margin-top: 20px;
+}
+
+.mm-admin-page .mm-form-body {
+    padding: 35px 40px;
+    background: #ffffff;
+}
+
+.mm-admin-page .mm-form-section {
+    background: #fafafa;
+    padding: 25px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    border: 1px solid #e0e0e0;
+}
+
+.mm-admin-page .mm-section-title {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #e91e63;
+    font-weight: 700;
+}
+
+.mm-admin-page .mm-form-row {
+    gap: 25px;
+}
+
+.mm-admin-page .mm-form-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.mm-admin-page .mm-form-group input,
+.mm-admin-page .mm-form-group textarea,
+.mm-admin-page .mm-form-group select {
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+
+.mm-admin-page .mm-form-group input:focus,
+.mm-admin-page .mm-form-group textarea:focus,
+.mm-admin-page .mm-form-group select:focus {
+    border-color: #e91e63;
+    box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
+}
+
+.mm-admin-page .mm-checkbox-group,
+.mm-admin-page .mm-radio-group {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.mm-admin-page .mm-services-list {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.mm-admin-page .mm-service-item {
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: #fafafa;
+}
+
+.mm-admin-page .mm-service-item:hover {
+    background: #fff;
+    border-color: #e91e63;
+}
+
+.mm-admin-page .mm-price-summary {
+    background: linear-gradient(135deg, #f8bbd0 0%, #fce4ec 100%);
+    border: 2px solid #e91e63;
+    border-radius: 8px;
+    padding: 25px;
+}
+
+.mm-admin-page .mm-btn {
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 6px;
+}
+
+.mm-admin-page .mm-btn-primary {
+    background: linear-gradient(135deg, #e91e63 0%, #c2185b 100%);
+    box-shadow: 0 3px 10px rgba(233, 30, 99, 0.3);
+}
+
+.mm-admin-page .mm-btn-primary:hover {
+    box-shadow: 0 5px 15px rgba(233, 30, 99, 0.4);
+}
+
+.mm-admin-page .mm-btn-secondary {
+    background: #f5f5f5;
+    color: #333;
+}
+
+.mm-admin-page .mm-btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+.mm-admin-page .mm-btn-preview {
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+}
+
+.mm-admin-page .mm-form-actions {
+    margin-top: 30px;
+    padding-top: 25px;
+    border-top: 2px solid #e0e0e0;
+}
+
+/* Radio buttons styling */
+.mm-admin-page .mm-rito-selector {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.mm-admin-page .mm-radio-item {
+    background: #fafafa;
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.mm-admin-page .mm-radio-item:has(input:checked) {
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
+/* Services header */
+.mm-admin-page .mm-services-header {
+    background: linear-gradient(135deg, #e91e63 0%, #9c27b0 100%);
+    color: white;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
 }
 </style>
 
